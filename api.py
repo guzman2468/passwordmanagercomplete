@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import *
 from pydantic import BaseModel
 from pymongo import MongoClient
 import config
+from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from pymongo import MongoClient
 import config
@@ -11,14 +12,21 @@ client = MongoClient(config.uri)
 db = client["password_manager"]
 collection = db["details"]
 
+class Website(BaseModel):
+    site_name: str
+    site_username: str
+    site_password: str
+
+
 class User(BaseModel):
     username: str
     password: str
-    site_name: str = None
+    websites: Optional[List[Website]] = None
 
 @app.get("/")
 def root():
     return {"Hello" : "World"}
+
 
 @app.post("/api/accountCreate")
 def accountCreate(user: User):
@@ -68,9 +76,9 @@ def searchSites(user: User):
         raise HTTPException(status_code=400, detail="No websites found for user. Please add website.")
 
     for website in existing_user["websites"]:
-        if user.site_name == None:
+        if user.websites[0].site_name == None:
             return {"message" : "site_name is missing"}
-        if website["name"].lower() == user.site_name.lower():
+        if website["name"].lower() == user.websites[0].site_name.lower():
             return {
                 "website_name" : website["name"],
                 "website_username" : website["username"],
@@ -78,3 +86,30 @@ def searchSites(user: User):
             }
     raise HTTPException(status_code=404, detail="Given site not found for this user.")
     return {"message" : "reached end of searchSites"}
+
+
+@app.post("/api/addSite")
+def addSite(user: User):
+    existing_user = collection.find_one({"initial_username": user.username, "initial_password": user.password},
+                                        {"websites": 1})
+    if not existing_user:
+        raise HTTPException(status_code=400, detail="No user found with those credentials")
+
+    if not user.websites or user.websites[0].site_name is None:
+        raise HTTPException(status_code=400, detail="websites.site_name is missing")
+
+    for website in existing_user["websites"]:
+        if website["name"] == user.websites[0].site_name:
+            raise HTTPException(status_code=400, detail="Website already entered. Please choose a new site to add.")
+
+        new_site = {
+            "name": user.websites[0].site_name,
+            "username": user.websites[0].site_username,
+            "password": user.websites[0].site_password
+        }
+
+        collection.update_one({"initial_username" : user.username, "initial_password" : user.password},
+                              {"$push" : {"websites": new_site}})
+
+        return {"message": "Website added successfully"}
+
