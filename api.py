@@ -40,7 +40,12 @@ def accountCreate(user: User):
     if existing_user:
         raise HTTPException(status_code=400, detail="Username is already taken")
 
-    document = {"initial_username" : user.username, "initial_password" : user.password}
+    document = ({
+        "initial_username" : user.username,
+        "initial_password" : user.password,
+        "websites" : []
+    })
+
     collection.insert_one(document)
     return {"message" : "Account created successfully"}
 
@@ -88,28 +93,45 @@ def searchSites(user: User):
     return {"message" : "reached end of searchSites"}
 
 
+
 @app.post("/api/addSite")
 def addSite(user: User):
-    existing_user = collection.find_one({"initial_username": user.username, "initial_password": user.password},
-                                        {"websites": 1})
+    '''
+    This endpoint takes in the User JSON object and parses through the list user.websites
+    to get the site_name, site_username, and site_password all while verifying the site does not
+    exist yet in the database
+    :param user: JSON object taken in to parse through for site details
+    :return: response message indicating if the operation was success
+    '''
+    existing_user = collection.find_one(
+        {"initial_username": user.username, "initial_password": user.password},
+        {"websites": 1}
+    )
     if not existing_user:
         raise HTTPException(status_code=400, detail="No user found with those credentials")
 
     if not user.websites or user.websites[0].site_name is None:
         raise HTTPException(status_code=400, detail="websites.site_name is missing")
 
-    for website in existing_user["websites"]:
-        if website["name"] == user.websites[0].site_name:
-            raise HTTPException(status_code=400, detail="Website already entered. Please choose a new site to add.")
+    new_site_name = user.websites[0].site_name
 
-        new_site = {
-            "name": user.websites[0].site_name,
-            "username": user.websites[0].site_username,
-            "password": user.websites[0].site_password
-        }
+    for website in existing_user.get("websites", []):
+        if website["name"] == new_site_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Website already entered. Please choose a new site to add."
+            )
 
-        collection.update_one({"initial_username" : user.username, "initial_password" : user.password},
-                              {"$push" : {"websites": new_site}})
+    new_site = {
+        "name": new_site_name,
+        "username": user.websites[0].site_username,
+        "password": user.websites[0].site_password
+    }
 
-        return {"message": "Website added successfully"}
+    collection.update_one(
+        {"initial_username": user.username, "initial_password": user.password},
+        {"$push": {"websites": new_site}}
+    )
+
+    return {"message": "Website added successfully"}
 
