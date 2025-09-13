@@ -4,6 +4,8 @@ from pymongo import MongoClient
 import config
 from second_window import Ui_SecondWindow
 from third_window import Ui_ThirdWindow
+import requests
+
 
 class Database:
     def __init__(self, db_name='password_manager'):
@@ -19,7 +21,6 @@ class SecondWindow(QMainWindow, Ui_SecondWindow):
         super().__init__()
         self.setupUi(self)
         self.main_window = main_window
-
 
         self.add_new_site_button.clicked.connect(self.main_window.add_new)
         self.exit1_button.clicked.connect(self.exit)
@@ -59,24 +60,42 @@ class Logic(QMainWindow, Ui_MainWindow):
         return self.__first_password_entry.text().strip()
 
     def acc_create(self):
+        '''
+        This function handles input validation on the first window by verifying all
+        needed inputs are present and meet the minimum length requirements.
+        Input validation errors are handled at the caller level, whereas database
+        errors are handled at the API level. FULLY FUNCTIONAL AS OF 9/13/2025
+        :return: None
+        '''
         try:
             if self.get_first_user_entry() == '' or self.get_first_password_entry() == '':
                 raise ValueError('All fields must be filled.')
             elif len(self.get_first_user_entry()) < 4 or len(self.get_first_password_entry()) < 4:
                 raise ValueError('Username and password must be 4 or more characters long')
 
-            existing_user = self.collection.find_one({"initial_username": self.get_first_user_entry()})
-            if existing_user:
-                raise ValueError("That username is already taken, please choose another")
-
             document = {
-                "initial_username": self.get_first_user_entry(),
-                "initial_password": self.get_first_password_entry()
+                "username": self.get_first_user_entry(),
+                "password": self.get_first_password_entry(),
+                "websites": []
             }
 
-            self.collection.insert_one(document)
-            self.status_label.setWordWrap(True)
-            self.status_label.setText("Account created! Please login.")
+            response = None
+
+            try:
+                response = requests.post(f'{config.api_url}/api/accountCreate', json=document)
+                response.raise_for_status()
+                if response.status_code == 200:
+                    self.status_label.setWordWrap(True)
+                    self.status_label.setText("Account created! Please login.")
+            except requests.exceptions.HTTPError:
+                if response is not None:
+                    try:
+                        error_detail = response.json().get("detail")
+                        self.status_label.setWordWrap(True)
+                        self.status_label.setText(f'{error_detail}')
+                    except ValueError:
+                        pass
+
 
         except ValueError as e:
             self.status_label.setWordWrap(True)
@@ -132,7 +151,6 @@ class Logic(QMainWindow, Ui_MainWindow):
                                 f'Your username for {website_to_find} is: {user_of_site} and your password is: {pass_of_site}'
                             )
                             return
-
 
                     self.second_window.details_label.setWordWrap(True)
                     self.second_window.details_label.setText(
@@ -204,4 +222,3 @@ class Logic(QMainWindow, Ui_MainWindow):
     def back(self):
         self.open_second_window()
         self.third_window.close()
-
