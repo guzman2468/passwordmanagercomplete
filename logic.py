@@ -106,13 +106,24 @@ class Logic(QMainWindow, Ui_MainWindow):
             if self.get_first_user_entry() == '' or self.get_first_password_entry() == '':
                 raise ValueError('All fields must be filled.')
 
-            user = self.collection.find_one(
-                {"initial_username": self.get_first_user_entry(), "initial_password": self.get_first_password_entry()})
+            document = {
+                "username": self.get_first_user_entry(),
+                "password": self.get_first_password_entry(),
+                "websites": []
+            }
 
-            if user:
-                self.open_second_window()
-            else:
-                raise ValueError("Could not find account with those credentials. Verify all info is typed correctly")
+            response = None
+
+            try:
+                response = requests.post(f'{config.api_url}/api/login', json=document)
+                response.raise_for_status()
+                if response.status_code == 200:
+                    self.open_second_window()
+            except requests.exceptions.HTTPError:
+                if response is not None:
+                    error_detail = response.json().get("detail")
+                    self.status_label.setWordWrap(True)
+                    self.status_label.setText(f'{error_detail}')
 
         except ValueError as e:
             self.status_label.setWordWrap(True)
