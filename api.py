@@ -14,8 +14,8 @@ collection = db["details"]
 
 class Website(BaseModel):
     site_name: str
-    site_username: str
-    site_password: str
+    site_username: str = None
+    site_password: str = None
 
 
 class User(BaseModel):
