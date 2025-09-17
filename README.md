@@ -1,5 +1,10 @@
-This is a password manager that is using MongoDB for the database and Python as the language of choice. To run the project, please download the following Python packages: pymongo and PyQT6.
-The usage of the project asks you to create an account or login into an already existing account, please do so accordingly.
+This is a password manager that uses MongoDB for the database and Python as the language of choice. Everything is hosted on a Render web service, making running the program straightforward.
+
+STEPS TO RUN:
+1. Clone repository onto your local machine
+2. From project directory, open the terminal
+3. Run: pip install -r requirements.txt
+4. Navigate to the main.py file and run the code
 
 
 WARNING: PLEASE DO NOT ENTER ANY SENSITIVE INFORMATION INTO THE PROJECT.
