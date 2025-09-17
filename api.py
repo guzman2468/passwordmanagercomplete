@@ -1,4 +1,3 @@
-from PyQt6.QtWidgets import *
 from pydantic import BaseModel
 from pymongo import MongoClient
 import config
