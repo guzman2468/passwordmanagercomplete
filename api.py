@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException
 from pymongo import MongoClient
 import os
 
+#retrieves database connection string from Render environment variables
 mongo_uri = os.environ.get("MONGO_URI")
 
 app = FastAPI()

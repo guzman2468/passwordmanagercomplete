@@ -6,14 +6,6 @@ from third_window import Ui_ThirdWindow
 import requests
 
 
-# class Database:
-#     def __init__(self, db_name='password_manager'):
-#         self.client = MongoClient(config.uri)
-#         self.db = self.client[db_name]
-#
-#     def get_collection(self, collection_name='details'):
-#         return self.db[collection_name]
-
 
 class SecondWindow(QMainWindow, Ui_SecondWindow):
     def __init__(self, main_window):
@@ -42,8 +34,6 @@ class ThirdWindow(QMainWindow, Ui_ThirdWindow):
 class Logic(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
-        # self.db = Database()
-        # self.collection = self.db.get_collection()
         self.setupUi(self)
 
         self.acc_create_button.clicked.connect(self.acc_create)
