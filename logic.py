@@ -53,11 +53,20 @@ class Logic(QMainWindow, Ui_MainWindow):
         self.__first_user_entry = self.first_user_entry
         self.__first_password_entry = self.first_password_entry
 
+        self.__logged_in_username = None
+        self.__logged_in_password = None
+
     def get_first_user_entry(self):
         return self.__first_user_entry.text().strip()
 
     def get_first_password_entry(self):
         return self.__first_password_entry.text().strip()
+
+    def get_logged_in_username(self):
+        return self.__logged_in_username
+
+    def get_logged_in_password(self):
+        return self.__logged_in_password
 
     def acc_create(self):
         '''
@@ -106,6 +115,8 @@ class Logic(QMainWindow, Ui_MainWindow):
             if self.get_first_user_entry() == '' or self.get_first_password_entry() == '':
                 raise ValueError('All fields must be filled.')
 
+            #TODO: Figure out how to access first window values from the second window
+
             document = {
                 "username": self.get_first_user_entry(),
                 "password": self.get_first_password_entry(),
@@ -118,7 +129,10 @@ class Logic(QMainWindow, Ui_MainWindow):
                 response = requests.post(f'{config.api_url}/api/login', json=document)
                 response.raise_for_status()
                 if response.status_code == 200:
+                    self.__logged_in_username = self.get_first_user_entry()
+                    self.__logged_in_password = self.get_first_password_entry()
                     self.open_second_window()
+                    #here
             except requests.exceptions.HTTPError:
                 if response is not None:
                     error_detail = response.json().get("detail")
@@ -143,35 +157,33 @@ class Logic(QMainWindow, Ui_MainWindow):
             if website_to_find == '':
                 raise ValueError("Search bar must be filled.")
 
-            user_document = self.collection.find_one(
-                {"initial_username": self.get_first_user_entry(),
-                 "initial_password": self.get_first_password_entry()},
-                {"websites": 1}
-            )
+            document = {
+                "username": self.get_logged_in_username(),
+                "password": self.get_logged_in_password(),
+                "websites": [
+                    {"site_name": website_to_find}
+                ]
+            }
 
-            if user_document and "websites" in user_document:
-                websites_list = user_document["websites"]
-                if websites_list:
-                    for website in websites_list:
-                        name_of_site = website["name"]
-                        if website_to_find == name_of_site:
-                            user_of_site = website["username"]
-                            pass_of_site = website["password"]
-                            self.second_window.details_label.setWordWrap(True)
-                            self.second_window.details_label.setText(
-                                f'Your username for {website_to_find} is: {user_of_site} and your password is: {pass_of_site}'
-                            )
-                            return
+            response = None
 
+            try:
+                response = requests.get(f'{config.api_url}/api/searchSites', json=document)
+                response.raise_for_status()
+                if response.status_code == 200:
+                    website_name = response.json().get("website_name")
+                    website_username = response.json().get("website_username")
+                    website_password = response.json().get("website_password")
                     self.second_window.details_label.setWordWrap(True)
-                    self.second_window.details_label.setText(
-                        f'No account details have been added for {website_to_find}.')
-                else:
+                    self.second_window.details_label.setText(f"Credentials for {website_name}: "
+                                                             f"Username: {website_username} "
+                                                             f"Password: {website_password}")
+            except requests.exceptions.HTTPError:
+                if response is not None:
+                    error_detail = response.json().get("detail")
                     self.second_window.details_label.setWordWrap(True)
-                    self.second_window.details_label.setText(f'No websites found in your account.')
-            else:
-                self.second_window.details_label.setWordWrap(True)
-                self.second_window.details_label.setText("No websites found in your account.")
+                    self.second_window.details_label.setText(f'{error_detail}')
+
 
         except ValueError as e:
             self.second_window.details_label.setWordWrap(True)
