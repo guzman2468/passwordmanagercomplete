@@ -1,13 +1,13 @@
 from pydantic import BaseModel
-from pymongo import MongoClient
-import config
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from pymongo import MongoClient
-import config
+import os
+
+mongo_uri = os.environ["MONGO_URI"]
 
 app = FastAPI()
-client = MongoClient(config.uri)
+client = MongoClient(mongo_uri)
 db = client["password_manager"]
 collection = db["details"]
 
