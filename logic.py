@@ -204,35 +204,36 @@ class Logic(QMainWindow, Ui_MainWindow):
             website_name = self.third_window.website_name_entry.text().lower().strip()
             username = self.third_window.second_username_entry.text()
             password = self.third_window.second_password_entry.text()
-            existing_website = self.collection.find_one(
-                {"initial_username": self.get_first_user_entry(),
-                 "initial_password": self.get_first_password_entry(),
-                 "websites.name": website_name})
 
             if website_name == '' or username == '' or password == '':
                 raise ValueError("All fields must be filled")
 
-            elif existing_website:
-                self.collection.update_one(
-                    {"initial_username": self.get_first_user_entry(),
-                     "initial_password": self.get_first_password_entry(),
-                     "websites.name": website_name},
-                    {"$set": {
-                        "websites.$.username": username,
-                        "websites.$.password": password
-                    }}
-                )
+            document = {
+                "username": self.get_logged_in_username(),
+                "password": self.get_logged_in_password(),
+                "websites": [
+                    {"site_name": website_name,
+                     "site_username": username,
+                     "site_password": password
+                     }
+                ]
+            }
 
-            self.collection.update_one(
-                {"initial_username": self.get_first_user_entry(), "initial_password": self.get_first_password_entry()},
-                {"$push": {
-                    "websites": {
-                        "name": website_name,
-                        "username": username,
-                        "password": password
-                    }
-                }}
-            )
+            response = None
+
+            try:
+                response = requests.post(f'{config.api_url}/api/addSite', json=document)
+                response.raise_for_status()
+                if response.status_code == 200:
+                    self.third_window.new_website_label.setWordWrap(True)
+                    success_message = response.json().get("message")
+                    self.third_window.new_website_label.setText(f"{success_message}")
+
+            except requests.exceptions.HTTPError:
+                if response is not None:
+                    error_details = response.json().get("detail")
+                    self.third_window.new_website_label.setWordWrap(True)
+                    self.third_window.new_website_label.setText(f"{error_details}")
 
             self.third_window.new_website_label.setWordWrap(True)
             self.third_window.new_website_label.setText(
